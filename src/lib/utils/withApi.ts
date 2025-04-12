@@ -2,6 +2,7 @@ import {NextRequest, NextResponse} from 'next/server';
 import {dbService} from '@/lib/db/service';
 import {UserRole} from '@/lib/types/models/user';
 import {decode, JWT} from 'next-auth/jwt';
+import {cookies} from 'next/headers';
 
 interface WithApiOptions {
   preventDb?: boolean;
@@ -23,24 +24,48 @@ export function withApi<T>(
 
     if (authHeader || cookieToken) {
       token = authHeader?.split('Bearer ')[1] || cookieToken;
-      decoded = await decode({
-        token,
-        secret: process.env.NEXTAUTH_SECRET!,
-      }) ?? undefined;
+      try {
+        decoded = await decode({
+          token,
+          secret: process.env.NEXTAUTH_SECRET!,
+        }) ?? undefined;
+      } catch (error: any) {
+        // Handle JWE decryption failure by clearing the token
+        if (error.code === 'ERR_JWE_DECRYPTION_FAILED') {
+          // Create a response that will clear the auth cookie
+          const response = NextResponse.json(
+            {data: null, code: 401, message: 'Session expired. Please log in again.'},
+            {status: 401}
+          );
+
+          // Clear the auth cookie
+          response.cookies.set('next-auth.session-token', '', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            path: '/',
+            maxAge: 0, // Expire immediately
+          });
+
+          return response;
+        }
+
+        // For other token errors, continue with decoded as undefined
+        decoded = undefined;
+      }
     }
 
     try {
       if (isProtected) {
         if (!decoded) {
           return NextResponse.json(
-            {data: null, code: 401, message: 'Vui lòng đăng nhập'},
+            {data: null, code: 401, message: 'Please sign in'},
             {status: 401},
           );
         }
 
         if (roles.length > 0 && !roles.includes(decoded.role as UserRole)) {
           return NextResponse.json(
-            {data: null, code: 403, message: 'Không có quyền truy cập nội dung này.'},
+            {data: null, code: 403, message: 'You are not permitted to access this resource.'},
             {status: 403},
           );
         }

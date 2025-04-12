@@ -20,7 +20,9 @@ async function dbConnect(retryCount = 0) {
     return;
   }
 
+  console.log("Connecting to MongoDB");
   if (cached.conn) {
+    console.log("Using cached connection to MongoDB");
     return cached.conn;
   }
 

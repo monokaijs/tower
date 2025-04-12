@@ -4,7 +4,8 @@ import "./globals.css";
 import {ReactNode} from "react";
 import {systemConfigService} from "@/lib/services/system-config";
 import {SystemConfigKey} from "@/lib/types/models/system-config";
-import { dbService } from "@/lib/db/service";
+import {dbService} from "@/lib/db/service";
+import {Toaster} from "sonner";
 
 const interFont = Inter({
   variable: "--font-inter",
@@ -30,6 +31,7 @@ export default function RootLayout({children}: { children: ReactNode }) {
       className={`${interFont.variable} antialiased`}
     >
     {children}
+    <Toaster position="top-right"/>
     </body>
     </html>
   );
